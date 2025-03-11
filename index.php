@@ -100,9 +100,8 @@ function api_request_logger_render_page() {
 
   echo '<form method="post">';
   echo '<input type="hidden" name="page" value="api-request-logger">';
-
+  $log_table->search_box('Search Logs', 'log-search');
   $log_table->display();
-
   echo '</form>';
 
   echo '</div>';

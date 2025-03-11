@@ -56,9 +56,21 @@ class API_Request_Logger_Table extends WP_List_Table
     $per_page = 10; // show 10 items per page
     $current_page = $this->get_pagenum();
 
+    // Search parameter (uses $_REQUEST to allow for GET and POST requests)
+    $search = !empty($_REQUEST['s']) ? trim($_REQUEST['s']) : '';
+
     // Sorting parameters
     $orderby = !empty($_GET['orderby']) ? esc_sql($_GET['orderby']) : 'time'; // Default sorting by time
     $order   = (!empty($_GET['order']) && strtolower($_GET['order']) === 'asc') ? 'ASC' : 'DESC';
+
+    // Base query
+    $where = '';
+    if (!empty($search)) {
+      $where = $wpdb->prepare(" WHERE endpoint LIKE %s", '%' . $wpdb->esc_like($search) . '%');
+    }
+
+    // Get total count with search filter
+    $total_items = $wpdb->get_var("SELECT COUNT(*) FROM $table_name $where");
 
     // Column headers
     $this->_column_headers = [
@@ -68,11 +80,10 @@ class API_Request_Logger_Table extends WP_List_Table
         'ID'
     ];
 
-    $total_items = $wpdb->get_var("SELECT COUNT(*) FROM $table_name");
-
     // Fetch paginated and sorted results from the database
+    $query = "SELECT * FROM $table_name $where ORDER BY $orderby $order LIMIT %d OFFSET %d";
     $requests = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM $table_name ORDER BY $orderby $order LIMIT %d OFFSET %d",
+        $query,
         $per_page,
         ($current_page - 1) * $per_page
     ), ARRAY_A);
