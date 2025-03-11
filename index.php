@@ -106,3 +106,38 @@ function api_request_logger_render_page() {
 
   echo '</div>';
 }
+
+function api_request_logger_export_csv() {
+  if (!isset($_GET['export_csv']) || $_GET['page'] !== 'api-request-logger') {
+    return;
+  }
+
+  global $wpdb;
+  $table_name = $wpdb->prefix . 'api_request_logs';
+
+  // Fetch all entries
+  $logs = $wpdb->get_results("SELECT * FROM $table_name", ARRAY_A);
+
+  if (empty($logs)) {
+    wp_die('No logs available to export.');
+  }
+
+  // Set headers for CSV download
+  header('Content-Type: text/csv; charset=utf-8');
+  header('Content-Disposition: attachment; filename=api-request-logs.csv');
+
+  $output = fopen('php://output', 'w');
+
+  // Add CSV column headers
+  fputcsv($output, array_keys($logs[0]));
+
+  // Add rows
+  foreach ($logs as $log) {
+    fputcsv($output, $log);
+  }
+
+  // Close the stream
+  fclose($output);
+  exit;
+}
+add_action('admin_init', 'api_request_logger_export_csv');

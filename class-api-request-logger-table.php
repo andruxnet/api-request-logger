@@ -157,4 +157,19 @@ class API_Request_Logger_Table extends WP_List_Table
       $wpdb->query("DELETE FROM $table_name WHERE id IN (" . implode(',', $_POST['bulk-delete']) . ")");
     }
   }
+
+  /**
+   * Add an export CSV button
+   */
+  public function extra_tablenav($which)
+  {
+    ?>
+    <div class="alignleft actions">
+      <a href="<?php echo esc_url(admin_url('tools.php?page=api-request-logger&export_csv=1')); ?>"
+         class="button button-primary action">
+        Export CSV
+      </a>
+    </div>
+    <?php
+  }
 }
