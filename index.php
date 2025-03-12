@@ -28,16 +28,19 @@ function api_request_logger_activate() {
 
   require_once ABSPATH . 'wp-admin/includes/upgrade.php';
   dbDelta($sql);
+
+  // Also, flush rewrite rules to register the REST API endpoint for json data
+  flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'api_request_logger_activate');
 
+// Delete the table when deactivating the plugin
 function api_request_logger_delete_table() {
   global $wpdb;
 
   $table_name = $wpdb->prefix . 'api_request_logs';
   $wpdb->query("DROP TABLE IF EXISTS {$table_name}");
 }
-// Delete the table when deactivating the plugin
 register_deactivation_hook(__FILE__, 'api_request_logger_delete_table');
 
 // Function to log the API request to the database
@@ -72,11 +75,11 @@ add_action('admin_menu', 'api_request_logger_menu');
 
 // Render the main page
 function api_request_logger_render_page() {
-  echo '<div class="wrap">';
-  echo '<h2>API Request Logger</h2>';
-
   // Include the custom WP_List_Table which will display the API requests
   require_once __DIR__ . '/class-api-request-logger-table.php';
+
+  echo '<div class="wrap">';
+  echo '<h2>API Request Logger</h2>';
 
   // Adding a test button to send an API request for demonstration purposes
   echo '<form method="post">';
@@ -98,6 +101,7 @@ function api_request_logger_render_page() {
   // Fetch entries from the database
   $log_table->prepare_items();
 
+  // Render the form with search box and table
   echo '<form method="post">';
   echo '<input type="hidden" name="page" value="api-request-logger">';
   $log_table->search_box('Search Logs', 'log-search');
@@ -107,6 +111,7 @@ function api_request_logger_render_page() {
   echo '</div>';
 }
 
+// Export logs to CSV
 function api_request_logger_export_csv() {
   if (!isset($_GET['export_csv']) || $_GET['page'] !== 'api-request-logger') {
     return;
@@ -141,3 +146,23 @@ function api_request_logger_export_csv() {
   exit;
 }
 add_action('admin_init', 'api_request_logger_export_csv');
+
+// Callback function to fetch logs in json format
+function api_request_logger_get_logs(WP_REST_Request $request) {
+  global $wpdb;
+  $table_name = $wpdb->prefix . 'api_request_logs';
+
+  $logs = $wpdb->get_results("SELECT * FROM $table_name ORDER BY time DESC", ARRAY_A);
+
+  return rest_ensure_response($logs);
+}
+
+// Register the REST API endpoint to fetch logs in json format
+function api_request_logger_register_rest_routes() {
+  register_rest_route('api-request-logger/v1', '/logs/', [
+      'methods'  => 'GET',
+      'callback' => 'api_request_logger_get_logs',
+      'permission_callback' => '__return_true',
+  ]);
+}
+add_action('rest_api_init', 'api_request_logger_register_rest_routes');
